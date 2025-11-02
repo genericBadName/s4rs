@@ -5,3 +5,8 @@ edition = "2024"
 
 [dependencies]
 jni = "0.21.1"
+dashmap = "7.0.0-rc2"
+serde = { version = "1.0.228", features = ["serde_derive"] }
+serde_json = { version = "1.0.145", features = ["std"] }
+eyre = "0.6.12"
+log = "0.4.28"
