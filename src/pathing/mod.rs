@@ -1,5 +1,5 @@
 pub mod data;
 pub mod algorithm;
-mod math;
-mod action;
+pub mod math;
+pub mod action;
 mod world;

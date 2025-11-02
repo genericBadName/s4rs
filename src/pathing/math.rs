@@ -1,10 +1,11 @@
+use std::ops::{Add, Sub};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Vector3i {
-    x: i32,
-    y: i32,
-    z: i32
+    pub x: i32,
+    pub y: i32,
+    pub z: i32
 }
 
 impl Vector3i {
@@ -27,13 +28,39 @@ impl Vector3i {
             z: 0
         }
     }
+}
 
-    pub fn offset(a: &Vector3i, b: &Vector3i) -> Vector3i {
+impl Add for Vector3i {
+    type Output = Vector3i;
+
+    fn add(self, rhs: Self) -> Self::Output {
         Vector3i {
-            x: a.x - b.x,
-            y: a.y - b.y,
-            z: a.z - b.z
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z
         }
     }
 }
 
+impl Sub for Vector3i {
+    type Output = Vector3i;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Vector3i {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! vec3i {
+    ($x:expr, $y:expr, $z:expr) => {
+        Vector3i {
+            x: $x,
+            y: $y,
+            z: $z
+        }
+    };
+}

@@ -32,7 +32,7 @@ fn equality() {
             solid: 5,
             dangerous: 7,
         },
-        cost_inf: 11,
+        cost_inf: 11.0,
         timeout: Duration::from_millis(13),
     };
 
@@ -43,7 +43,7 @@ fn equality() {
             solid: 5,
             dangerous: 7,
         },
-        cost_inf: 11,
+        cost_inf: 11.0,
         timeout: Duration::from_millis(13),
     };
 

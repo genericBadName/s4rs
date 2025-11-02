@@ -1,6 +1,4 @@
 use std::cmp::Ordering;
-use std::ops::Mul;
-use std::rc::Rc;
 use serde::{Deserialize, Serialize};
 use crate::pathing::math::Vector3i;
 
@@ -70,7 +68,7 @@ impl Ord for Node {
 /// `Node`, only movement-related information.
 #[derive(Debug, Copy, Clone)]
 pub struct PathNode {
-    pos: Vector3i
+    pub(crate) pos: Vector3i
 }
 
 impl From<Node> for PathNode {

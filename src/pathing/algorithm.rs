@@ -12,7 +12,7 @@ use crate::pathing::world::get_hazard;
 const MINIMUM_IMPROVEMENT: f64 = 0.01;
 
 /// Temporary state for A* path calculations.
-struct PathCalculator<'a> {
+pub struct PathCalculator<'a> {
     /// The Open set (min-heap) involved in the calculation. These are nodes that have not been
     /// considered yet, but are known (the "node frontier").
     open_set: BinaryHeap<Reverse<Box<Node>>>,
@@ -25,7 +25,7 @@ struct PathCalculator<'a> {
 }
 
 impl PathCalculator<'_> {
-    fn new(moves: Vec<MoveAction>, config: &'_ Configuration) -> PathCalculator<'_> {
+    pub fn new(moves: Vec<MoveAction>, config: &'_ Configuration) -> PathCalculator<'_> {
         PathCalculator {
             open_set: BinaryHeap::new(),
             closed_set: DashMap::new(),
@@ -66,7 +66,7 @@ impl PathCalculator<'_> {
     /// Updates node positions and advances the pathfinding algorithm.
     fn update_positions(&mut self, current: Box<Node>, end: &Vector3i) {
         for action in self.moves.iter() {
-            let neighbor_pos = Vector3i::offset(&current.pos, &action.offset);
+            let neighbor_pos = current.pos - action.offset;
             if !self.can_move_to(neighbor_pos) { continue }
 
             let mut neighbor_node = self.get_node_at_pos(neighbor_pos, &current);
@@ -106,7 +106,8 @@ impl PathCalculator<'_> {
 
     /// Checks if the pathfinding entity can move to the specified position.
     fn can_move_to(&self, pos: Vector3i) -> bool {
-        todo!()
+        // TODO: actually implement
+        true
     }
 
     /// Retraces the `Node` relationships to find the optimal path.
