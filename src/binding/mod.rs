@@ -1,4 +1,3 @@
 mod pathing;
-mod data;
-mod math;
 mod util;
+pub mod jni;

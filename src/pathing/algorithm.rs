@@ -45,7 +45,6 @@ impl PathCalculator<'_> {
         // run until all nodes are considered or time is up
         while !self.open_set.is_empty() && start_time.elapsed().le(&self.config.timeout) {
             let current = self.open_set.pop();
-
             match current {
                 None => break,
                 Some(c_node) => {

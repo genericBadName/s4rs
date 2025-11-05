@@ -1,5 +1,9 @@
 use std::cmp::Ordering;
+use jni::JNIEnv;
+use jni::objects::{JObject, JValueGen};
 use serde::{Deserialize, Serialize};
+use eyre::Result;
+use crate::binding::jni::{JNICompatible};
 use crate::pathing::math::Vector3i;
 
 /// A node within the A* graph.
@@ -84,6 +88,31 @@ impl From<&Node> for PathNode {
         PathNode {
             pos: value.pos
         }
+    }
+}
+
+impl <'local> JNICompatible<'local> for PathNode {
+    const CLASS: &'static str = "com/genericbadname/s4mc/pathing/PathNode";
+
+    fn to_jni(&self, env: &mut JNIEnv<'local>) -> Result<JObject<'local>> {
+        let pathnode_class = env.find_class(Self::CLASS)?;
+        let pos = self.pos.to_jni(env)?;
+        Ok(env.new_object(pathnode_class, "(Lcom/genericbadname/s4mc/math/Vector3i;)V", &[
+            JValueGen::Object(&pos),
+        ])?)
+    }
+
+    fn from_jni(env: &mut JNIEnv<'local>, object: JObject<'local>) -> Result<Self>
+    where
+        Self: Sized
+    {
+        let pos = env.call_method(
+            &object, "pos", "()Lgenericbadname/s4mc/math/Vector3i;", &[]
+        )?.l()?;
+
+        Ok(Self {
+            pos: Vector3i::from_jni(env, pos)?
+        })
     }
 }
 

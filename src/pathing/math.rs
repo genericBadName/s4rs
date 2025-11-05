@@ -1,5 +1,11 @@
+use std::fmt::{Display, Formatter};
 use std::ops::{Add, Sub};
+use jni::JNIEnv;
+use jni::objects::{JObject, JValueGen};
 use serde::{Deserialize, Serialize};
+use eyre::Result;
+use crate::binding::jni::{JNICompatible};
+use crate::{vec3i};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Vector3i {
@@ -54,13 +60,32 @@ impl Sub for Vector3i {
     }
 }
 
-#[macro_export]
-macro_rules! vec3i {
-    ($x:expr, $y:expr, $z:expr) => {
-        Vector3i {
-            x: $x,
-            y: $y,
-            z: $z
-        }
-    };
+impl Display for Vector3i {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {}, {})", self.x, self.y, self.z)
+    }
+}
+
+impl <'local> JNICompatible<'local> for Vector3i {
+    const CLASS: &'static str = "com/genericbadname/s4mc/math/Vector3i";
+
+    fn to_jni(&self, env: &mut JNIEnv<'local>) -> Result<JObject<'local>> {
+        let vec3i_class = env.find_class(Self::CLASS)?;
+        Ok(env.new_object(vec3i_class, "(III)V", &[
+            JValueGen::Int(self.x),
+            JValueGen::Int(self.y),
+            JValueGen::Int(self.z)
+        ])?)
+    }
+
+    fn from_jni(env: &mut JNIEnv<'local>, object: JObject<'local>) -> Result<Self>
+    where
+        Self: Sized
+    {
+        let xv = env.call_method(&object, "x", "()I", &[])?.i()?;
+        let yv = env.call_method(&object, "y", "()I", &[])?.i()?;
+        let zv = env.call_method(&object, "z", "()I", &[])?.i()?;
+
+        Ok(vec3i!(xv, yv, zv))
+    }
 }

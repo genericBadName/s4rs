@@ -1,0 +1,13 @@
+{
+  "hazard": {
+    "unknown": 10,
+    "non_solid": 21,
+    "solid": 10,
+    "dangerous": 50
+  },
+  "cost_inf": 100000.0,
+  "timeout": {
+    "secs": 2,
+    "nanos": 0
+  }
+}
