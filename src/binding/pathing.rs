@@ -1,13 +1,15 @@
-use jni::JNIEnv;
-use jni::objects::{JClass, JObject, JValueGen};
-use jni::sys::jobject;
-use eyre::Result;
 use crate::binding::jni::JNICompatible;
 use crate::config::Configuration;
 use crate::pathing::action::default_moveset;
 use crate::pathing::algorithm::PathCalculator;
 use crate::pathing::data::PathNode;
 use crate::pathing::math::Vector3i;
+use crate::pathing::world::VoxelSpace;
+use eyre::Result;
+use jni::objects::{JClass, JObject};
+use jni::sys::jobject;
+use jni::JNIEnv;
+use std::rc::Rc;
 
 #[unsafe(no_mangle)]
 #[allow(non_snake_case)]
@@ -17,15 +19,16 @@ pub extern "system" fn Java_com_genericbadname_s4mc_pathing_PathCalculator_calcu
     start: JObject<'local>,
     end: JObject<'local>) -> jobject {
     let try_this: Result<JObject<'local>> = (move || {
-        let config = Configuration::new();
-        let moves = default_moveset();
+        let config = Rc::new(Configuration::new());
+        let moves = Rc::new(default_moveset());
+        let space = Rc::new(VoxelSpace::new());
 
-        let mut calc = PathCalculator::new(moves, &config);
+        let mut calc = PathCalculator::new(moves, config, space);
         let start_vec = Vector3i::from_jni(&mut env, start)?;
         let end_vec = Vector3i::from_jni(&mut env, end)?;
 
         let out = match calc.calculate(start_vec, end_vec) {
-            None => Vec::<PathNode>::new().to_jni(&mut env)?,
+            None => Vec::<PathNode<Vector3i>>::new().to_jni(&mut env)?,
             Some(path) => {
                 path.to_jni(&mut env)?
             }

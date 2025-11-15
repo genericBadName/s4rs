@@ -1,28 +1,32 @@
-use std::cmp::Ordering;
-use jni::JNIEnv;
-use jni::objects::{JObject, JValueGen};
-use serde::{Deserialize, Serialize};
+use crate::binding::jni::JNICompatible;
 use eyre::Result;
-use crate::binding::jni::{JNICompatible};
-use crate::pathing::math::Vector3i;
+use jni::objects::{JObject, JValueGen};
+use jni::JNIEnv;
+use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+use std::ops::Add;
+use std::rc::Rc;
+use crate::pathing::algorithm::GraphPosition;
 
 /// A node within the A* graph.
 #[derive(Debug, Clone)]
-pub struct Node {
+pub struct Node<P> where P: GraphPosition
+{
     /// Initial cost to traverse to this node.
     pub g_cost: f64,
     /// Heuristic cost to traverse to this node.
     pub h_cost: f64,
-    /// Parent of this node. If `Option::None`, this is considered the root node.
-    pub parent: Option<Box<Node>>,
     /// The node's position in space.
-    pub pos: Vector3i
+    pub pos: P,
+    /// Parent of this node. If `Option::None`, this is considered the root node.
+    pub parent: Option<Rc<Node<P>>>
 }
-impl Node {
-    pub fn start_node(start: Vector3i, end: &Vector3i) -> Node {
+impl <P> Node<P> where P: GraphPosition
+{
+    pub fn start_node(start: P, end: &P) -> Node<P> {
         Node {
             g_cost: 0.0,
-            h_cost: start.distance_squared(&end),
+            h_cost: start.heuristic_from_self(end),
             parent: None,
             pos: start
         }
@@ -33,13 +37,15 @@ impl Node {
     }
 }
 
-impl <'a> PartialEq<Self> for Node {
+impl <'a, P> PartialEq<Self> for Node<P> where P: GraphPosition
+{
     fn eq(&self, other: &Self) -> bool {
         self.f_cost().eq(&other.f_cost())
     }
 }
 
-impl <'a> PartialOrd for Node {
+impl <'a, P> PartialOrd for Node<P> where P: GraphPosition
+{
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.f_cost().partial_cmp(&other.f_cost())
     }
@@ -61,8 +67,9 @@ impl <'a> PartialOrd for Node {
     }
 }
 
-impl Eq for Node {}
-impl Ord for Node {
+impl <P> Eq for Node<P> where P: GraphPosition {}
+impl <P> Ord for Node<P> where P: GraphPosition
+{
     fn cmp(&self, other: &Self) -> Ordering {
         self.f_cost().total_cmp(&other.f_cost())
     }
@@ -70,28 +77,31 @@ impl Ord for Node {
 
 /// A node on the path to a given destination. Does not contain unnecessary cost data like with
 /// `Node`, only movement-related information.
-#[derive(Debug, Copy, Clone)]
-pub struct PathNode {
-    pub(crate) pos: Vector3i
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct PathNode<P> where P: GraphPosition
+{
+    pub pos: P
 }
 
-impl From<Node> for PathNode {
-    fn from(value: Node) -> Self {
+impl <P> From<Node<P>> for PathNode<P> where P: GraphPosition
+{
+    fn from(value: Node<P>) -> Self {
         PathNode {
             pos: value.pos
         }
     }
 }
 
-impl From<&Node> for PathNode {
-    fn from(value: &Node) -> Self {
+impl <P> From<&Node<P>> for PathNode<P> where P: GraphPosition
+{
+    fn from(value: &Node<P>) -> Self {
         PathNode {
             pos: value.pos
         }
     }
 }
 
-impl <'local> JNICompatible<'local> for PathNode {
+impl <'local, P> JNICompatible<'local> for PathNode<P> where P: GraphPosition + JNICompatible<'local> {
     const CLASS: &'static str = "com/genericbadname/s4mc/pathing/PathNode";
 
     fn to_jni(&self, env: &mut JNIEnv<'local>) -> Result<JObject<'local>> {
@@ -111,7 +121,7 @@ impl <'local> JNICompatible<'local> for PathNode {
         )?.l()?;
 
         Ok(Self {
-            pos: Vector3i::from_jni(env, pos)?
+            pos: P::from_jni(env, pos)?
         })
     }
 }

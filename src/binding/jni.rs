@@ -1,7 +1,6 @@
-use constcat::concat_slices;
-use jni::JNIEnv;
-use jni::objects::{JObject, JValueGen};
 use eyre::Result;
+use jni::objects::{JObject, JValueGen};
+use jni::JNIEnv;
 
 /// A type which is easily transferable between a Rust representation and a Java `Object`.
 /// For `struct`s, these are usually going to be `Record`s as they are the closest

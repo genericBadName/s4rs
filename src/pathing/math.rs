@@ -1,11 +1,12 @@
+use crate::binding::jni::JNICompatible;
+use crate::pathing::algorithm::GraphPosition;
+use crate::vec3i;
+use eyre::Result;
+use jni::objects::{JObject, JValueGen};
+use jni::JNIEnv;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Sub};
-use jni::JNIEnv;
-use jni::objects::{JObject, JValueGen};
-use serde::{Deserialize, Serialize};
-use eyre::Result;
-use crate::binding::jni::{JNICompatible};
-use crate::{vec3i};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Vector3i {
@@ -87,5 +88,80 @@ impl <'local> JNICompatible<'local> for Vector3i {
         let zv = env.call_method(&object, "z", "()I", &[])?.i()?;
 
         Ok(vec3i!(xv, yv, zv))
+    }
+}
+
+impl GraphPosition for Vector3i {
+    fn heuristic(a: &Self, b: &Self) -> f64 {
+        a.distance_squared(b)
+    }
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct Vector2i {
+    pub x: i32,
+    pub y: i32
+}
+
+impl Vector2i {
+    pub fn distance_squared(&self, other: &Vector2i) -> f64 {
+        let xd = (self.x - other.x).pow(2);
+        let yd = (self.y - other.y).pow(2);
+
+        ((xd + yd) as f64).sqrt()
+    }
+
+    pub fn new(x: i32, y: i32) -> Vector2i {
+        Vector2i { x, y }
+    }
+
+    pub fn zero() -> Vector2i {
+        Vector2i {
+            x: 0,
+            y: 0
+        }
+    }
+    
+    /// Clamps the `Vector2i` by limiting its component length.
+    pub fn clamp_comp(&self, min: i32, max: i32) -> Vector2i {
+        Vector2i {
+            x: self.x.clamp(min, max),
+            y: self.y.clamp(min, max)
+        }
+    }
+    
+}
+
+impl Add for Vector2i {
+    type Output = Vector2i;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Vector2i {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y
+        }
+    }
+}
+
+impl Sub for Vector2i {
+    type Output = Vector2i;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Vector2i {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y
+        }
+    }
+}
+
+impl Display for Vector2i {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+impl GraphPosition for Vector2i {
+    fn heuristic(a: &Self, b: &Self) -> f64 {
+        a.distance_squared(b)
     }
 }

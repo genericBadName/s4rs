@@ -1,12 +1,12 @@
+use crate::pathing::data::HazardMultiplier;
+use eyre::{eyre, Result};
+use log::info;
+use serde::{Deserialize, Serialize};
+use serde_json::{from_str, to_string_pretty};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::Path;
 use std::time::Duration;
-use log::info;
-use serde::{Deserialize, Serialize};
-use serde_json::{from_str, to_string_pretty};
-use eyre::{eyre, Result};
-use crate::pathing::data::HazardMultiplier;
 
 /// Configuration for the pathfinding system.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]

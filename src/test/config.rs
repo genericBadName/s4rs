@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-use std::time::Duration;
 use crate::config::Configuration;
 use crate::pathing::data::HazardMultiplier;
+use std::path::PathBuf;
+use std::time::Duration;
 
 #[test]
 fn read_write() {

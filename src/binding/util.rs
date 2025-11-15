@@ -1,7 +1,6 @@
-use jni::JNIEnv;
-use jni::objects::{JObject, JValueGen};
 use eyre::Result;
-use log::info;
+use jni::objects::{JObject, JValueGen};
+use jni::JNIEnv;
 
 const LIST_CLASS: &'static str = "java/util/ArrayList";
 const LIST_CTOR: &'static str = "()V";
