@@ -1,31 +1,78 @@
 use crate::pathing::math::{Vector2i, Vector3i};
 use crate::{vec2i, vec3i};
 use std::ops::Add;
+use jni::JNIEnv;
+use jni::objects::JObject;
+use crate::binding::jni::JNICompatible;
+use crate::pathing::algorithm::GraphPosition;
+
+pub type Moveset<P>  = Vec<MoveAction<P>>;
 
 /// A move action that can be taken by the pathfinding entity. These are the "lines" that
 /// connect nodes on the graph.
-#[derive(Debug, Copy, Clone)]
-pub struct MoveAction<P> where P: Copy + Add<Output = P> {
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
+pub struct MoveAction<P> where P: GraphPosition {
     /// Initial cost to execute this move action.
-    pub cost: f64,
+    pub cost: u64,
     /// Offset from the current position to check for this action (the neighbor position).
     pub offset: P
 }
 
-pub fn default_moveset() -> Vec<MoveAction<Vector3i>> {
+impl <P> MoveAction<P> where P: GraphPosition {
+    pub const fn new(cost: u64, offset: P) -> Self {
+        Self { cost, offset }
+    }
+}
+
+/// Represents an action taken to move to a point in space.
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
+pub struct SpatialAction<P> where P: GraphPosition {
+    /// The position that the action ended up at.
+    pub pos: P,
+    /// The type of action itself. If `Option::None`, this is the root action (where the pathfinder
+    /// started from).
+    pub move_action: Option<MoveAction<P>>
+}
+
+impl <P> SpatialAction<P> where P: GraphPosition {
+    pub fn new(pos: P, move_action: MoveAction<P>) -> Self {
+        Self { pos, move_action: Some(move_action) }
+    }
+
+    pub fn new_root(pos: P) -> Self {
+        Self { pos, move_action: None }
+    }
+}
+
+impl <'local, P> JNICompatible<'local> for SpatialAction<P> where P: GraphPosition {
+    const CLASS: &'static str = "com/genericbadname/s4mc/pathing/SpatialAction";
+
+    fn to_jni(&self, env: &mut JNIEnv<'local>) -> eyre::Result<JObject<'local>> {
+        todo!()
+    }
+
+    fn from_jni(env: &mut JNIEnv<'local>, object: JObject<'local>) -> eyre::Result<Self>
+    where
+        Self: Sized
+    {
+        todo!()
+    }
+}
+
+pub fn default_moveset() -> Moveset<Vector3i> {
     vec![
-        MoveAction { cost: 1.0, offset: vec3i!(1, 0, 0) },
-        MoveAction { cost: 1.0, offset: vec3i!(-1, 0, 0) },
-        MoveAction { cost: 1.0, offset: vec3i!(0, 0, 1) },
-        MoveAction { cost: 1.0, offset: vec3i!(0, 0, -1) },
+        MoveAction::new(1, vec3i!(1, 0, 0)),
+        MoveAction::new(1, vec3i!(-1, 0, 0)),
+        MoveAction::new(1, vec3i!(0, 0, 1)),
+        MoveAction::new(1, vec3i!(0, 0, -1))
     ]
 }
 
-pub fn moveset_2d_cardinal() -> Vec<MoveAction<Vector2i>> {
+pub fn moveset_2d_cardinal() -> Moveset<Vector2i> {
     vec![
-        MoveAction { cost: 1.0, offset: vec2i!(1, 0) },
-        MoveAction { cost: 1.0, offset: vec2i!(-1, 0) },
-        MoveAction { cost: 1.0, offset: vec2i!(0, 1) },
-        MoveAction { cost: 1.0, offset: vec2i!(0, -1) },
+        MoveAction::new(1, vec2i!(1, 0)),
+        MoveAction::new(1, vec2i!(-1, 0)),
+        MoveAction::new(1, vec2i!(0, 1)),
+        MoveAction::new(1, vec2i!(0, -1))
     ]
 }

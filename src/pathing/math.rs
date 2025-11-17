@@ -24,11 +24,11 @@ impl Vector3i {
         ((xd + yd + zd) as f64).sqrt()
     }
 
-    pub fn new(x: i32, y: i32, z: i32) -> Vector3i {
+    pub const fn new(x: i32, y: i32, z: i32) -> Vector3i {
         Vector3i { x, y, z }
     }
 
-    pub fn zero() -> Vector3i {
+    pub const fn zero() -> Vector3i {
         Vector3i {
             x: 0,
             y: 0,
@@ -92,7 +92,7 @@ impl <'local> JNICompatible<'local> for Vector3i {
 }
 
 impl GraphPosition for Vector3i {
-    fn heuristic(a: &Self, b: &Self) -> f64 {
+    fn distance(a: &Self, b: &Self) -> f64 {
         a.distance_squared(b)
     }
 }
@@ -161,7 +161,7 @@ impl Display for Vector2i {
 }
 
 impl GraphPosition for Vector2i {
-    fn heuristic(a: &Self, b: &Self) -> f64 {
+    fn distance(a: &Self, b: &Self) -> f64 {
         a.distance_squared(b)
     }
 }

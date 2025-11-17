@@ -1,5 +1,5 @@
 use crate::config::Configuration;
-use crate::pathing::action::{moveset_2d_cardinal, MoveAction};
+use crate::pathing::action::{moveset_2d_cardinal, Moveset};
 use crate::pathing::algorithm::PathCalculator;
 use crate::pathing::math::Vector2i;
 use crate::pathing::world::FlatSpace;
@@ -155,15 +155,15 @@ fn pathfinder_maze_complex() {
 
 struct PathfindingScenario2D {
     calc: PathCalculator<Vector2i, FlatSpace>,
-    moveset: Rc<Vec<MoveAction<Vector2i>>>,
+    moveset: Moveset<Vector2i>,
     environment: Vec<&'static str>
 }
 
 impl PathfindingScenario2D {
-    fn new(environment: Vec<&'static str>, moveset: Vec<MoveAction<Vector2i>>) -> PathfindingScenario2D {
-        let config = Rc::new(Configuration::new());
-        let space = Rc::new(FlatSpace::new(environment.clone(), config.clone()));
-        let moves = Rc::new(moveset);
+    fn new(environment: Vec<&'static str>, moveset: Moveset<Vector2i>) -> PathfindingScenario2D {
+        let config = Configuration::new();
+        let space = Box::new(FlatSpace::new(environment.clone(), config));
+        let moves = moveset;
         PathfindingScenario2D {
             calc: PathCalculator::new(moves.clone(), config, space),
             moveset: moves,
@@ -174,13 +174,13 @@ impl PathfindingScenario2D {
     fn eval(&mut self, start: Vector2i, end: Vector2i, follow: Vec<&'static str>) {
         // calculate
         let out = self.calc.calculate(start, end);
-        assert!(out.is_some(), "Pathfinder failed to calculate a path entirely");
+        assert!(out.is_ok(), "Pathfinding failed with error: {}", out.unwrap_err());
         let path = out.unwrap();
         assert!(path.len() > 0, "Pathfinder returned an empty path");
 
         // now compare paths
         let target_path: Vec<Vector2i> = self.to_positions(start, end, follow);
-        let res_path: Vec<Vector2i> = path.iter().map(|pn| pn.pos).collect();
+        let res_path: Vec<Vector2i> = path.iter().map(|pn| pn.action.pos).collect();
         assert_eq!(target_path.len(), res_path.len(),
                    "Paths did not have equal length:\n---Expected:\n{}---Actual:\n{}",
                    self.draw_path(&target_path),
@@ -192,14 +192,14 @@ impl PathfindingScenario2D {
             let res = path.get(i);
             assert!(cmp.is_some() && res.is_some(), "Unexpectedly failed to get a path, possible deviation detected");
             assert_eq!(*cmp.unwrap(),
-                       res.unwrap().pos,
+                       res.unwrap().action.pos,
                        "Pathfinder did not choose the optimal path:\n---Expected:\n{}---Actual:\n{}",
                        self.draw_path(&target_path),
                        self.draw_path(&res_path)
             );
         }
         // clean up
-        println!("---SUCCESS---\n{}", self.draw_path(&target_path));
+        //println!("---SUCCESS---\n{}", self.draw_path(&target_path));
         self.calc.reset()
     }
 
@@ -285,19 +285,20 @@ impl PathfindingScenario2D {
 
     fn eval_success(&mut self, start: Vector2i, end: Vector2i) {
         let out = self.calc.calculate(start, end);
-        assert!(out.is_some(), "Pathfinder failed to calculate a path entirely");
+        assert!(out.is_ok(), "Pathfinding failed with error: {}", out.unwrap_err());
         let path = out.unwrap();
         assert!(path.len() > 0, "Pathfinder returned an empty path");
-        assert_eq!(path.last().unwrap().pos, end, "Pathfinder did not reach the end successfully");
+        assert_eq!(path.last().unwrap().action.pos, end, "Pathfinder did not reach the end successfully");
 
-        let pos_path = path.iter().map(|pn| pn.pos).collect();
-        println!("---SUCCESS---\n{}", self.draw_path(&pos_path));
+        //let pos_path = path.iter().map(|pn| pn.action.pos).collect();
+        //println!("---SUCCESS---\n{}", self.draw_path(&pos_path));
         self.calc.reset()
     }
 
     fn eval_failure(&mut self, start: Vector2i, end: Vector2i) {
         let out = self.calc.calculate(start, end);
-        assert!(out.is_none(), "Pathfinder calculated an impossible path");
+        assert!(out.is_ok(), "Pathfinding failed with error: {}", out.unwrap_err());
+        assert_eq!(out.unwrap().len(), 0, "Pathfinder calculated an impossible path");
         self.calc.reset();
     }
 }

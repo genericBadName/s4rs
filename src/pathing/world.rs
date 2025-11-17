@@ -40,11 +40,11 @@ impl Space<Vector3i> for VoxelSpace {
 /// `*`: Hazardous
 pub struct FlatSpace {
     plane: Vec<&'static str>,
-    config: Rc<Configuration>
+    config: Configuration
 }
 
 impl FlatSpace {
-    pub fn new(plane: Vec<&'static str>, config: Rc<Configuration>) -> FlatSpace {
+    pub fn new(plane: Vec<&'static str>, config: Configuration) -> FlatSpace {
         FlatSpace {
             plane,
             config

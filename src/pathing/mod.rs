@@ -4,6 +4,7 @@ pub mod math;
 pub mod action;
 pub mod world;
 
+// TODO: honestly, replace this with a const fn.
 /// Creates a `Vector3i` without needing to invoke the constructor directly.
 #[macro_export]
 macro_rules! vec3i {

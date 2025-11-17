@@ -30,7 +30,7 @@ impl Configuration {
             timeout: Duration::from_millis(2000)
         }
     }
-    /// Writes the configuration file to a given path. Will overwite any existing configuration.
+    /// Writes the configuration file to a given path. Will overwrite any existing configuration.
     pub fn write_config(&self, path: &Path) -> Result<()> {
         if path.exists() {
             info!("Overwriting existing configuration at {:?}", path)
