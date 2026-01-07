@@ -5,7 +5,7 @@ use jni::JNIEnv;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
-use crate::pathing::action::SpatialAction;
+use crate::pathing::action::{Moveset2D, SpatialAction};
 use crate::pathing::algorithm::GraphPosition;
 use crate::pathing::math::Vector2i;
 
@@ -20,7 +20,7 @@ pub struct Node<P> where P: GraphPosition
     /// The node's position in space and how the pathfinder moved to it.
     pub action: SpatialAction<P>,
     /// Parent of this node. If `Option::None`, this is considered the root node.
-    pub parent: Option<usize>,
+    pub parent: Option<SpatialAction<P>>,
     /// Open-set heap index. If `Option::None`, this `Node` is Closed.
     pub heap_idx: Option<usize>
 }
@@ -225,22 +225,27 @@ impl <P> BinaryHeapOpenSet<P> where P: GraphPosition {
         Ok(se)
     }
 
-    /// Insert a new `Node` into the Open Set. Returns an `Err` if something wrong occurred while
-    /// sifting `node` into the set.
-    pub fn insert(&mut self, mut node: Node<P>) -> Result<()> {
+    /// Insert a new `Node` into the Open Set, setting `node`'s `heap_idx`.
+    pub fn insert(&mut self, node: &mut Node<P>) -> Result<()> {
+        node.heap_idx = Some(self.data.len());
+        self.data.push(*node);
+        self.sift_up(node)
+    }
+
+    pub fn insert_direct(&mut self, mut node: Node<P>) -> Result<()> {
         node.heap_idx = Some(self.data.len());
         self.data.push(node);
-        self.sift_up(&node)
+        self.sift_up(&mut node)
     }
 
     /// Sifts the set from `node` until it is leveled with the rest of the heap.
     /// Runs a decrease-key operation until fully leveled.
-    pub fn sift_up(&mut self, to_update: &Node<P>) -> Result<()> {
+    pub fn sift_up(&mut self, to_update: &mut Node<P>) -> Result<()> {
         // do not operate on Closed nodes!!
         if to_update.heap_idx.is_none() { return Err(eyre!("Tried to sift a Closed node")) }
         if to_update.heap_idx.unwrap() == 0 { return Ok(()) }
 
-        let mut updating = SetEntry::from(to_update);
+        let mut updating = SetEntry::new(to_update.heap_idx.unwrap(), to_update.f_cost());
         let mut parent = self.entry_for(Self::parent_of(updating.idx))?;
 
         // sift until the node reaches the correct position
@@ -249,14 +254,19 @@ impl <P> BinaryHeapOpenSet<P> where P: GraphPosition {
             self.swap_idx(updating.idx, parent.idx)?;
             // and then update our working values
             updating.idx = parent.idx;
-            parent.idx = Self::parent_of(updating.idx);
-            parent.cost = self.entry_for(parent.idx)?.cost
+            parent = self.entry_for(Self::parent_of(updating.idx))?;
         }
+
+        to_update.heap_idx = Some(updating.idx);
 
         Ok(())
     }
 
+    // FIXME: invalid indices being used for some reason
     fn swap_idx(&mut self, a: usize, b: usize) -> Result<()> {
+        let last_idx = self.data.len() - 1;
+        if a > last_idx || b > last_idx { return Err(eyre!("Tried to swap an out of bounds index")) }
+
         self.data.swap(a, b);
         self.data.get_mut(a)
             .ok_or_else(|| eyre!("Couldn't get node (index {}) to update its heap index", a))?
@@ -274,18 +284,20 @@ impl <P> BinaryHeapOpenSet<P> where P: GraphPosition {
 
     /// Removes the lowest cost node from the set. Returns an `Ok(Node<P>)` with the `Node` if it
     /// was removed and the set was updated successfully.
-    pub fn pop(&mut self) -> Result<Node<P>> {
-        if self.is_empty() { return Err(eyre!("Empty set")) }
-        let mut lowest = self.data.swap_remove(0);
-        lowest.heap_idx = None; // node taken out: update its index!
-        self.data.get_mut(0)
-            .ok_or_eyre("Couldn't get the next lowest node (index 0)")?.heap_idx = Some(0);
+    pub fn pop(&mut self) -> Option<Node<P>> {
+        if self.is_empty() { return None }
+        let lowest = self.swap_remove_preserve()?;
+
+        if self.data.len() == 0 { return Some(lowest) }
+
+        self.data.get_mut(0)?.heap_idx = Some(0);
 
         // if there's no more nodes, no need to sift any further
-        if self.data.len() < 2 { return Ok(lowest) }
+        if self.data.len() == 1 { return Some(lowest) }
 
         // otherwise, keep trying to sift down
-        self.sift_down().map(|_| lowest)
+        self.sift_down().ok()?;
+        Some(lowest)
     }
 
     /// Sifts the heap from the top down, readjusting from the root `Node` until the heap
@@ -297,10 +309,10 @@ impl <P> BinaryHeapOpenSet<P> where P: GraphPosition {
         // the left child by default
         let mut child = SetEntry::new(1, 0.0);
 
-        while child.idx <= size {
+        while child.idx < size {
             child.cost = self.entry_for(child.idx)?.cost;
             // get which child (left or right) is better to sift them up
-            if child.idx < size {
+            if child.idx + 1 < size {
                 let rc_idx = child.idx + 1;
                 let rc_cost = self.entry_for(rc_idx)?.cost;
                 if child.cost > rc_cost {
@@ -333,5 +345,26 @@ impl <P> BinaryHeapOpenSet<P> where P: GraphPosition {
     /// Returns the list of costs within the heap.
     pub fn cost_order(&self) -> Vec<f64> {
         self.data.iter().map(|n| n.f_cost()).collect()
+    }
+    
+    /// Returns the complete data within the set.
+    pub fn clone_data(&self) -> Vec<Node<P>> {
+        self.data.clone()
+    }
+
+    /// Swaps the first element with the last and removes it while still preserving data order.
+    /// Returns the removed element or `None` if the `vec` was empty.
+    fn swap_remove_preserve(&mut self) -> Option<Node<P>> {
+        if self.data.is_empty() { return None }
+
+        // move last node to root
+        let last_idx = self.data.len() - 1;
+        self.data.swap(0, last_idx);
+        self.data.get_mut(0)?.heap_idx = Some(0);
+        // remove (former) root
+        let mut removing = self.data.remove(last_idx);
+        removing.heap_idx = None;
+
+        Some(removing)
     }
 }

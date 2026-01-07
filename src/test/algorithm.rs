@@ -1,10 +1,10 @@
 use crate::config::Configuration;
-use crate::pathing::action::{moveset_2d_cardinal, Moveset};
+use crate::pathing::action::{moveset_2d_cardinal, MoveAction, Moveset2D, Moveset, SpatialAction};
 use crate::pathing::algorithm::PathCalculator;
 use crate::pathing::math::Vector2i;
 use crate::pathing::world::FlatSpace;
 use crate::vec2i;
-use std::rc::Rc;
+use crate::pathing::data::PathNode;
 
 #[test]
 fn scenario_from_str() {
@@ -23,8 +23,15 @@ fn scenario_from_str() {
         "_____",
         "_____"
     ]);
-    assert_eq!(conv_path1, vec![vec2i!(0, 0), vec2i!(1 ,0), vec2i!(2, 0), vec2i!(3, 0), vec2i!(4, 0)],
-               "Failed to convert FlatSpace to a path");
+    assert_eq!(conv_path1, vec![
+        PathNode::new(SpatialAction::new_root(vec2i!(0, 0))),
+        mv(vec2i!(1, 0), Moveset2D::Right),
+        mv(vec2i!(2, 0), Moveset2D::Right),
+        mv(vec2i!(3, 0), Moveset2D::Right),
+        mv(vec2i!(4, 0), Moveset2D::Right),
+    ],
+               "Failed to convert FlatSpace to a path"
+    );
     let conv_path2 = scenario.to_positions(vec2i!(0, 0), vec2i!(0, 4), vec![
         "O____",
         "O____",
@@ -32,8 +39,15 @@ fn scenario_from_str() {
         "O____",
         "O____"
     ]);
-    assert_eq!(conv_path2, vec![vec2i!(0, 0), vec2i!(0, 1), vec2i!(0, 2), vec2i!(0, 3), vec2i!(0, 4)],
-               "Failed to convert FlatSpace to a path");
+    assert_eq!(conv_path2, vec![
+        PathNode::new(SpatialAction::new_root(vec2i!(0, 0))),
+        mv(vec2i!(0, 1), Moveset2D::Down),
+        mv(vec2i!(0, 2), Moveset2D::Down),
+        mv(vec2i!(0, 3), Moveset2D::Down),
+        mv(vec2i!(0, 4), Moveset2D::Down)
+    ], 
+               "Failed to convert FlatSpace to a path"
+    );
 
     let conv_path3 = scenario.to_positions(vec2i!(0, 0), vec2i!(4, 4), vec![
         "O_OOO",
@@ -43,12 +57,32 @@ fn scenario_from_str() {
         "OOO_O"
     ]);
     assert_eq!(conv_path3, vec![
-        vec2i!(0, 0), vec2i!(0, 1), vec2i!(0, 2), vec2i!(0, 3), vec2i!(0, 4),
-        vec2i!(1, 4),
-        vec2i!(2, 4), vec2i!(2, 3), vec2i!(2, 2), vec2i!(2, 1), vec2i!(2, 0),
-        vec2i!(3, 0),
-        vec2i!(4, 0), vec2i!(4, 1), vec2i!(4, 2), vec2i!(4, 3), vec2i!(4, 4)
+        PathNode::new(SpatialAction::new_root(vec2i!(0, 0))), 
+        mv(vec2i!(0, 1), Moveset2D::Down), 
+        mv(vec2i!(0, 2), Moveset2D::Down), 
+        mv(vec2i!(0, 3), Moveset2D::Down), 
+        mv(vec2i!(0, 4), Moveset2D::Down),
+
+        mv(vec2i!(1, 4), Moveset2D::Right),
+
+        mv(vec2i!(2, 4), Moveset2D::Right),
+        mv(vec2i!(2, 3), Moveset2D::Up),
+        mv(vec2i!(2, 2), Moveset2D::Up),
+        mv(vec2i!(2, 1), Moveset2D::Up),
+        mv(vec2i!(2, 0), Moveset2D::Up),
+
+        mv(vec2i!(3, 0), Moveset2D::Right),
+
+        mv(vec2i!(4, 0), Moveset2D::Right),
+        mv(vec2i!(4, 1), Moveset2D::Down),
+        mv(vec2i!(4, 2), Moveset2D::Down),
+        mv(vec2i!(4, 3), Moveset2D::Down),
+        mv(vec2i!(4, 4), Moveset2D::Down),
     ], "Failed to convert FlatSpace to a path");
+}
+
+fn mv(pos: Vector2i, action: Moveset2D) -> PathNode<Vector2i> {
+    PathNode::new(SpatialAction::new(pos, action.of()))
 }
 
 #[test]
@@ -57,22 +91,35 @@ fn pathfinder_trivial() {
         "O_G"
     ], moveset_2d_cardinal());
 
-    scenario.eval_success(vec2i!(0, 0), vec2i!(2, 0));
+    scenario.eval(vec2i!(0, 0), vec2i!(2, 0), vec![
+        "OOO"
+    ]);
 }
 
 #[test]
 fn pathfinder_trivial_large() {
     let mut scenario = PathfindingScenario2D::new(vec![
-        "O____G",
+        "O___G",
         "_____",
         "_____",
         "_____",
-        "O___O"
+        "____O"
     ], moveset_2d_cardinal());
 
-    scenario.eval_success(vec2i!(0, 0), vec2i!(4, 4));
-    scenario.eval_success(vec2i!(0, 4), vec2i!(4, 4));
-    scenario.eval_success(vec2i!(4, 0), vec2i!(4, 4));
+    scenario.eval(vec2i!(0, 0), vec2i!(4, 0), vec![
+        "OOOOO",
+        "     ",
+        "     ",
+        "     ",
+        "     "
+    ]);
+    scenario.eval(vec2i!(4, 4), vec2i!(4, 0), vec![
+        "    O",
+        "    O",
+        "    O",
+        "    O",
+        "    O"
+    ]);
 }
 
 #[test]
@@ -179,43 +226,45 @@ impl PathfindingScenario2D {
         assert!(path.len() > 0, "Pathfinder returned an empty path");
 
         // now compare paths
-        let target_path: Vec<Vector2i> = self.to_positions(start, end, follow);
-        let res_path: Vec<Vector2i> = path.iter().map(|pn| pn.action.pos).collect();
-        assert_eq!(target_path.len(), res_path.len(),
+        let target_path: Vec<PathNode<Vector2i>> = self.to_positions(start, end, follow);
+        assert_eq!(target_path.len(), path.len(),
                    "Paths did not have equal length:\n---Expected:\n{}---Actual:\n{}",
                    self.draw_path(&target_path),
-                   self.draw_path(&res_path)
+                   self.draw_path(&path)
         );
         // compare the individual positions
         for i in 0..path.len() {
             let cmp = target_path.get(i);
             let res = path.get(i);
             assert!(cmp.is_some() && res.is_some(), "Unexpectedly failed to get a path, possible deviation detected");
-            assert_eq!(*cmp.unwrap(),
+            assert_eq!(cmp.unwrap().action.pos,
                        res.unwrap().action.pos,
                        "Pathfinder did not choose the optimal path:\n---Expected:\n{}---Actual:\n{}",
                        self.draw_path(&target_path),
-                       self.draw_path(&res_path)
+                       self.draw_path(&path)
             );
         }
         // clean up
-        //println!("---SUCCESS---\n{}", self.draw_path(&target_path));
+        println!("---SUCCESS---\n{}", self.draw_path(&target_path));
         self.calc.reset()
     }
 
-    fn to_positions(&self, start: Vector2i, end: Vector2i, follow: Vec<&'static str>) -> Vec<Vector2i> {
-        let mut out_path: Vec<Vector2i> = Vec::new();
+    fn to_positions(&self, start: Vector2i, end: Vector2i, follow: Vec<&'static str>) -> Vec<PathNode<Vector2i>> {
+        let mut out_path: Vec<PathNode<Vector2i>> = Vec::new();
+        let mut positions: Vec<Vector2i> = Vec::new();
         let mut current = start;
-        out_path.push(start);
+        out_path.push(PathNode::new(SpatialAction::new_root(start)));
+        positions.push(start);
 
         while current != end {
             let mut pushed = false;
             for m in self.moveset.iter() {
                 let new_pos = current + m.offset;
                 // only add if this spot has not been added before
-                if !out_path.contains(&new_pos) && let Some(row) = follow.get(new_pos.y as usize) &&
+                if !positions.contains(&new_pos) && let Some(row) = follow.get(new_pos.y as usize) &&
                     let Some(cc) = row.chars().nth(new_pos.x as usize) && cc == 'O' {
-                    out_path.push(new_pos.clone());
+                    out_path.push(PathNode::new(SpatialAction::new(new_pos, *m)));
+                    positions.push(current);
                     current = new_pos;
                     pushed = true;
                     break;
@@ -228,41 +277,56 @@ impl PathfindingScenario2D {
         out_path
     }
 
-    fn draw_path(&self, path: &Vec<Vector2i>) -> String {
+    fn draw_path(&self, path: &Vec<PathNode<Vector2i>>) -> String {
         let mut environ_str: Vec<String> = self.environment.iter()
             .map(|row| row.to_string()).collect();
 
         // iterate through the positions
-        let mut last = Vector2i::zero(); // last difference
         for i in 0..path.len() {
-            let pos = path[i];
-            let c: char;
+            let pos = path[i].action.pos;
+            let c;
 
-            // otherwise, assign the values
-            if i == 0 {
-                c = '@';
-            } else if i == path.len()-1 {
-                c = 'G';
-            } else if i+1 < path.len() { // peek ahead
-                if i > 0 {
-                    last = pos - path[i-1];
+            c = match path[i].action.move_action {
+                Some(came_from) => {
+                    if let Some(going_to_pn) = path.get(i + 1) &&
+                        let Some(going_to) = going_to_pn.action.move_action {
+                        match came_from.offset {
+                            vec2i!(0, 1) => match going_to.offset {
+                                vec2i!(0, 1) => '↑',
+                                vec2i!(0, -1) => '⤓',
+                                vec2i!(1, 0) => '↱',
+                                vec2i!(-1, 0) => '↰',
+                                _ => '?'
+                            },
+                            vec2i!(0, -1) => match going_to.offset {
+                                vec2i!(0, 1) => '⤒',
+                                vec2i!(0, -1) => '↓',
+                                vec2i!(1, 0) => '↳',
+                                vec2i!(-1, 0) => '↲',
+                                _ => '?'
+                            },
+                            vec2i!(1, 0) => match going_to.offset {
+                                vec2i!(0, 1) => '⬏',
+                                vec2i!(0, -1) => '⬎',
+                                vec2i!(1, 0) => '→',
+                                vec2i!(-1, 0) => '⇤',
+                                _ => '?'
+                            },
+                            vec2i!(-1, 0) => match going_to.offset {
+                                vec2i!(0, 1) => '⬐',
+                                vec2i!(0, -1) => '⬑',
+                                vec2i!(1, 0) => '⇥',
+                                vec2i!(-1, 0) => '←',
+                                _ => '?'
+                            },
+                            _ => '?'
+                        }
+                    } else {
+                        'G'
+                    }
                 }
-                let direction = pos - path[i+1] - last;
-                c = '*'
-                /*
-                c = match direction.clamp_comp(-1, 1) {
-                    vec2i!(0, 1) | vec2i!(0, -1) => '│',
-                    vec2i!(1, 0) | vec2i!(-1, 0) => '─',
-                    vec2i!(1, 1) => '└',
-                    vec2i!(-1, 1) => '┘',
-                    vec2i!(-1, -1) => '┐',
-                    vec2i!(1, -1) => '┌',
-                    _ => '?'
-                }
-                 */
-            } else {
-                c = '?';
-            }
+                None => '@'
+            };
 
             let row = &mut environ_str[pos.y as usize];
             row.replace_range(
@@ -290,8 +354,7 @@ impl PathfindingScenario2D {
         assert!(path.len() > 0, "Pathfinder returned an empty path");
         assert_eq!(path.last().unwrap().action.pos, end, "Pathfinder did not reach the end successfully");
 
-        //let pos_path = path.iter().map(|pn| pn.action.pos).collect();
-        //println!("---SUCCESS---\n{}", self.draw_path(&pos_path));
+        println!("---SUCCESS---\n{}", self.draw_path(&path));
         self.calc.reset()
     }
 

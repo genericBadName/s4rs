@@ -35,11 +35,11 @@ pub struct SpatialAction<P> where P: GraphPosition {
 }
 
 impl <P> SpatialAction<P> where P: GraphPosition {
-    pub fn new(pos: P, move_action: MoveAction<P>) -> Self {
+    pub const fn new(pos: P, move_action: MoveAction<P>) -> Self {
         Self { pos, move_action: Some(move_action) }
     }
 
-    pub fn new_root(pos: P) -> Self {
+    pub const fn new_root(pos: P) -> Self {
         Self { pos, move_action: None }
     }
 }
@@ -75,4 +75,28 @@ pub fn moveset_2d_cardinal() -> Moveset<Vector2i> {
         MoveAction::new(1, vec2i!(0, 1)),
         MoveAction::new(1, vec2i!(0, -1))
     ]
+}
+
+pub enum Moveset2D {
+    Left,
+    Right,
+    Up,
+    Down
+}
+
+impl Moveset2D {
+    pub const fn of(&self) -> MoveAction<Vector2i> {
+        match self {
+            Moveset2D::Left => MoveAction::new(1, vec2i!(-1, 0)),
+            Moveset2D::Right => MoveAction::new(1, vec2i!(1, 0)),
+            Moveset2D::Up => MoveAction::new(1, vec2i!(0, -1)),
+            Moveset2D::Down => MoveAction::new(1, vec2i!(0, 1))
+        }
+    }
+}
+
+impl Into<MoveAction<Vector2i>> for Moveset2D {
+    fn into(self) -> MoveAction<Vector2i> {
+        self.of()
+    }
 }

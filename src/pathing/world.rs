@@ -4,11 +4,8 @@ use std::rc::Rc;
 
 /// Stores data about a space from which nodes are sampled. A `Space` can be of N-dimensions.
 pub trait Space<P> where P: Copy {
-    /// Returns the hazard multiplier for the given location.
-    fn get_hazard(&self, pos: P) -> f64;
-    /// Checks if the pathing entity is able to move to the given location. This is done before any
-    /// other pathing or hazard checks.
-    fn can_move_to(&self, pos: P) -> bool;
+    /// Returns the cost to move to this type of material in the world.
+    fn material_cost(&self, pos: P) -> f64;
 }
 
 pub struct VoxelSpace {
@@ -22,11 +19,7 @@ impl VoxelSpace {
 }
 
 impl Space<Vector3i> for VoxelSpace {
-    fn get_hazard(&self, pos: Vector3i) -> f64 {
-        todo!()
-    }
-
-    fn can_move_to(&self, pos: Vector3i) -> bool {
+    fn material_cost(&self, pos: Vector3i) -> f64 {
         todo!()
     }
 }
@@ -53,7 +46,7 @@ impl FlatSpace {
 }
 
 impl Space<Vector2i> for FlatSpace {
-    fn get_hazard(&self, pos: Vector2i) -> f64 {
+    fn material_cost(&self, pos: Vector2i) -> f64 {
         if pos.x < 0 || pos.y < 0  {
             return self.config.cost_inf;
         }
@@ -71,21 +64,5 @@ impl Space<Vector2i> for FlatSpace {
         }
 
         self.config.cost_inf
-    }
-
-    fn can_move_to(&self, pos: Vector2i) -> bool {
-        if pos.x < 0 || pos.y < 0  {
-            return false;
-        }
-
-        if let Some(row) = self.plane.get(pos.y as usize) &&
-            let Some(char_at) = row.chars().nth(pos.x as usize) {
-            return match char_at {
-                'O' | 'G' | '_' | '*' => true,
-                _ => false,
-            }
-        }
-        
-        false
     }
 }
