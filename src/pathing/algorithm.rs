@@ -73,7 +73,6 @@ impl <P, S> PathCalculator<P, S> where P: GraphPosition, S: Space<P> {
 
     /// Updates node positions and advances the pathfinding algorithm.
     fn update_positions(&mut self, current: Node<P>, end: &P) -> Result<()> {
-        println!("CURRENT: {:?}", current.action.pos);
         // moves determine which neighbor to check
         for action in self.moves.iter() {
             let neighbor_pos = current.action.pos + action.offset;
@@ -90,8 +89,6 @@ impl <P, S> PathCalculator<P, S> where P: GraphPosition, S: Space<P> {
                 neighbor.parent = Some(current.action);
                 neighbor.g_cost = tentative_g_cost;
                 neighbor.h_cost = neighbor_pos.distance_to(end);
-
-                println!("neighbor: {:?}: {}", neighbor_pos, neighbor.f_cost());
 
                 // decrease key of the open set
                 if neighbor.is_open() {
@@ -115,7 +112,7 @@ impl <P, S> PathCalculator<P, S> where P: GraphPosition, S: Space<P> {
             // create a new closed node if one doesn't exist at that position.
             let new_closed = Node {
                 g_cost: self.config.cost_inf,
-                h_cost: 0.0,
+                h_cost: action.pos.distance_to(end),
                 parent: Some(current.action),
                 action: *action,
                 heap_idx: None,

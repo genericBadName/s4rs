@@ -186,15 +186,15 @@ fn pathfinder_maze_complex() {
         "XXX_____XX"
     ], moveset_2d_cardinal());
 
-    scenario.eval(vec2i!(0, 0), vec2i!(4, 5), vec![
-        "O__OOO____",
-        "O__O_O____",
-        "O__O_OOO__",
-        "O__O___O__",
-        "OOOO_OOO__",
-        "__________",
-        "__________",
-        "__________",
+    scenario.eval(vec2i!(0, 0), vec2i!(5, 4), vec![
+        "O_________",
+        "O_________",
+        "O_________",
+        "O_________",
+        "OOO__OOO__",
+        "__O____O__",
+        "__OOOO_O__",
+        "_____OOO__",
         "__________",
         "__________"
     ]);

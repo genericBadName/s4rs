@@ -262,7 +262,6 @@ impl <P> BinaryHeapOpenSet<P> where P: GraphPosition {
         Ok(())
     }
 
-    // FIXME: invalid indices being used for some reason
     fn swap_idx(&mut self, a: usize, b: usize) -> Result<()> {
         let last_idx = self.data.len() - 1;
         if a > last_idx || b > last_idx { return Err(eyre!("Tried to swap an out of bounds index")) }
